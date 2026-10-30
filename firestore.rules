@@ -1,0 +1,92 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isCaseOwner(caseId) {
+      return isSignedIn() && get(/databases/$(database)/documents/cases/$(caseId)).data.ownerId == request.auth.uid;
+    }
+
+    function isValidCase(data) {
+      return data.keys().hasAll(['caseId', 'title', 'status', 'priority', 'riskLevel', 'riskScore', 'ownerId', 'createdAt']) &&
+        data.caseId is string && data.caseId.size() <= 64 &&
+        data.title is string && data.title.size() <= 200 &&
+        data.status in ['open', 'investigating', 'closed'] &&
+        data.priority in ['low', 'medium', 'high', 'critical'] &&
+        data.riskLevel in ['Benign', 'Suspicious', 'High Risk'] &&
+        data.riskScore is number && data.riskScore >= 0 && data.riskScore <= 100 &&
+        data.ownerId == request.auth.uid &&
+        (!('targetUrl' in data) || (data.targetUrl is string && data.targetUrl.size() <= 2048)) &&
+        (!('targetDomain' in data) || (data.targetDomain is string && data.targetDomain.size() <= 253)) &&
+        (!('findings' in data) || (data.findings is string && data.findings.size() <= 10000)) &&
+        (!('recommendations' in data) || (data.recommendations is string && data.recommendations.size() <= 5000)) &&
+        (!('limitations' in data) || (data.limitations is string && data.limitations.size() <= 2000)) &&
+        (!('integrityHash' in data) || (data.integrityHash is string && data.integrityHash.size() <= 64)) &&
+        (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64)) &&
+        (!('ownerEmail' in data) || (data.ownerEmail is string && data.ownerEmail.size() <= 255));
+    }
+
+    function isValidEvidence(data) {
+      return data.keys().hasAll(['id', 'filename', 'sha256', 'sizeBytes', 'ownerId', 'createdAt']) &&
+        data.id is string && data.id.size() <= 64 &&
+        data.filename is string && data.filename.size() <= 255 &&
+        data.sha256 is string && data.sha256.size() <= 64 &&
+        data.sizeBytes is number && data.sizeBytes >= 0 &&
+        data.ownerId == request.auth.uid &&
+        (!('mimeType' in data) || (data.mimeType is string && data.mimeType.size() <= 100)) &&
+        (!('source' in data) || (data.source is string && data.source.size() <= 128)) &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 2000));
+    }
+
+    function isValidHistory(data) {
+      return data.keys().hasAll(['id', 'action', 'detail', 'ownerId', 'createdAt']) &&
+        data.id is string && data.id.size() <= 64 &&
+        data.action is string && data.action.size() <= 64 &&
+        data.detail is string && data.detail.size() <= 1000 &&
+        data.ownerId == request.auth.uid &&
+        (!('investigator' in data) || (data.investigator is string && data.investigator.size() <= 255));
+    }
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /cases/{caseId} {
+      allow get: if isSignedIn() && isValidId(caseId) && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(caseId) && isValidCase(request.resource.data);
+      allow update: if isSignedIn() && isValidId(caseId) &&
+        resource.data.ownerId == request.auth.uid &&
+        request.resource.data.ownerId == resource.data.ownerId &&
+        isValidCase(request.resource.data) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'title', 'status', 'priority', 'findings', 'recommendations',
+          'limitations', 'integrityHash', 'updatedAt', 'riskLevel',
+          'riskScore', 'targetUrl', 'targetDomain'
+        ]);
+      allow delete: if isSignedIn() && isValidId(caseId) && resource.data.ownerId == request.auth.uid;
+
+      match /evidence/{evidenceId} {
+        allow get: if isCaseOwner(caseId) && isValidId(evidenceId);
+        allow list: if isCaseOwner(caseId);
+        allow create: if isCaseOwner(caseId) && isValidId(evidenceId) && isValidEvidence(request.resource.data);
+        allow delete: if isCaseOwner(caseId) && isValidId(evidenceId);
+      }
+
+      match /history/{historyId} {
+        allow get: if isCaseOwner(caseId) && isValidId(historyId);
+        allow list: if isCaseOwner(caseId);
+        allow create: if isCaseOwner(caseId) && isValidId(historyId) && isValidHistory(request.resource.data);
+        allow delete: if false; // Audit logs are tamper-evident append-only
+      }
+    }
+  }
+}

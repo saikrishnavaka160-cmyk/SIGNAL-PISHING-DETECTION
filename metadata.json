@@ -1,0 +1,8 @@
+{
+  "name": "Signal — Email Security Screening",
+  "description": "Local-first phishing email detection and security screening tool. Spot risk signals, understand rule scores, and review labeled datasets securely in your browser.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

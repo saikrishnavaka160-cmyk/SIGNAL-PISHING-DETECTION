@@ -1,0 +1,205 @@
+{
+  "entities": {
+    "Case": {
+      "title": "Investigation Case",
+      "description": "A cybersecurity URL and email phishing investigation case.",
+      "type": "object",
+      "properties": {
+        "caseId": {
+          "type": "string",
+          "description": "Unique identifier for the case",
+          "maxLength": 64
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the investigation case",
+          "maxLength": 200
+        },
+        "status": {
+          "type": "string",
+          "description": "Lifecycle status of the investigation",
+          "enum": ["open", "investigating", "closed"]
+        },
+        "priority": {
+          "type": "string",
+          "description": "Triage priority",
+          "enum": ["low", "medium", "high", "critical"]
+        },
+        "targetUrl": {
+          "type": "string",
+          "description": "Target URL investigated under zero-network constraints",
+          "maxLength": 2048
+        },
+        "targetDomain": {
+          "type": "string",
+          "description": "Parsed domain name of the target URL",
+          "maxLength": 253
+        },
+        "riskLevel": {
+          "type": "string",
+          "description": "Calculated risk categorization",
+          "enum": ["Benign", "Suspicious", "High Risk"]
+        },
+        "riskScore": {
+          "type": "number",
+          "description": "Heuristic risk score from 0 to 100"
+        },
+        "findings": {
+          "type": "string",
+          "description": "Investigator analytical findings",
+          "maxLength": 10000
+        },
+        "recommendations": {
+          "type": "string",
+          "description": "Remediation and defensive recommendations",
+          "maxLength": 5000
+        },
+        "limitations": {
+          "type": "string",
+          "description": "Defensive zero-network analytical limitations statement",
+          "maxLength": 2000
+        },
+        "integrityHash": {
+          "type": "string",
+          "description": "SHA-256 integrity hash of case parameters",
+          "maxLength": 64
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the case investigator",
+          "maxLength": 128
+        },
+        "ownerEmail": {
+          "type": "string",
+          "description": "Email of the case investigator",
+          "maxLength": 255
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of case creation"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last case modification"
+        }
+      },
+      "required": ["caseId", "title", "status", "priority", "riskLevel", "riskScore", "ownerId", "createdAt"]
+    },
+    "EvidenceItem": {
+      "title": "Evidence Item",
+      "description": "Cryptographically hashed digital evidence artifact attached to an investigation.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Evidence item ID",
+          "maxLength": 64
+        },
+        "filename": {
+          "type": "string",
+          "description": "Name of the evidence file",
+          "maxLength": 255
+        },
+        "mimeType": {
+          "type": "string",
+          "description": "Detected MIME type",
+          "maxLength": 100
+        },
+        "sha256": {
+          "type": "string",
+          "description": "SHA-256 cryptographic digest of the evidence payload",
+          "maxLength": 64
+        },
+        "sizeBytes": {
+          "type": "number",
+          "description": "File size in bytes"
+        },
+        "source": {
+          "type": "string",
+          "description": "Evidence source origin (e.g. Gmail Inbox, EML Upload, URL Capture)",
+          "maxLength": 128
+        },
+        "verifiedAt": {
+          "type": "string",
+          "description": "ISO timestamp of cryptographic verification"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Investigator notes regarding evidence chain of custody",
+          "maxLength": 2000
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "UID of the investigator",
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of evidence registration"
+        }
+      },
+      "required": ["id", "filename", "sha256", "sizeBytes", "ownerId", "createdAt"]
+    },
+    "AuditLog": {
+      "title": "Audit Log Entry",
+      "description": "Append-only chronological audit log of investigator actions.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Log entry identifier",
+          "maxLength": 64
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "ISO timestamp of the recorded action"
+        },
+        "action": {
+          "type": "string",
+          "description": "Investigator action verb (e.g. CREATED, ANALYZED, REOPENED, CLOSED, EXPORTED)",
+          "maxLength": 64
+        },
+        "investigator": {
+          "type": "string",
+          "description": "Display name or email of the investigator",
+          "maxLength": 255
+        },
+        "detail": {
+          "type": "string",
+          "description": "Detailed explanation of the action taken",
+          "maxLength": 1000
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "UID of the investigator",
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp"
+        }
+      },
+      "required": ["id", "action", "detail", "ownerId", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/cases/{caseId}": {
+      "schema": {
+        "$ref": "#/entities/Case"
+      },
+      "description": "Investigation cases created and managed by authorized investigators"
+    },
+    "/cases/{caseId}/evidence/{evidenceId}": {
+      "schema": {
+        "$ref": "#/entities/EvidenceItem"
+      },
+      "description": "Cryptographically hashed evidence records attached to an investigation case"
+    },
+    "/cases/{caseId}/history/{historyId}": {
+      "schema": {
+        "$ref": "#/entities/AuditLog"
+      },
+      "description": "Chronological audit trail for case accountability and forensics verification"
+    }
+  }
+}
